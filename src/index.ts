@@ -31,6 +31,7 @@ async function analizarFactura(): Promise<AnalisisFactura> {
   const { text, experimental_output, usage } = await generateText({
     model: openaiSdk("gpt-4o-mini"),
     system: systemPrompt,
+    maxSteps: 3,
     experimental_output: Output.object({
       schema: z.object({
         cumplimiento: z
