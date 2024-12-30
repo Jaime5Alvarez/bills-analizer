@@ -11,15 +11,19 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "@ai-sdk/openai": "^1.0.11",
     "@langchain/community": "^0.3.20",
     "@langchain/core": "^0.3.26",
+    "@opendocsg/pdf2md": "^0.2.1",
+    "ai": "^4.0.22",
     "dotenv": "^16.4.7",
     "drizzle-orm": "^0.38.3",
     "gpt-tokenizer": "^2.8.1",
     "langchain": "^0.3.8",
     "pdf": "link:@langchain/community/document_loaders/fs/pdf",
     "pdf-parse": "^1.1.1",
-    "pg": "^8.13.1"
+    "pg": "^8.13.1",
+    "postgres": "^3.4.5"
   },
   "devDependencies": {
     "@types/pg": "^8.11.10",
