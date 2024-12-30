@@ -1,10 +1,8 @@
-import { findRelevantContent } from "./lib/ai/embeddings";
 import { OPENAI_API_KEY } from "./config";
-import { createOpenAI } from '@ai-sdk/openai';
-import { generateObject } from 'ai';
-import { z } from 'zod';
-import { processPdf } from "./lib/retrieval/pdf";
-import { FileItemChunk } from "./types";
+import { createOpenAI } from "@ai-sdk/openai";
+import { generateObject } from "ai";
+import { z } from "zod";
+import fs from 'fs';
 
 // Definir interfaces
 interface AnalisisFactura {
@@ -14,42 +12,46 @@ interface AnalisisFactura {
 }
 
 async function analizarFactura(): Promise<AnalisisFactura> {
-  // Obtener políticas relevantes
-  const detallesFactura: FileItemChunk[] = await processPdf('files/billetes_va03okx_va03rrp.pdf')
-
-  const politicasRelevantes = await findRelevantContent(detallesFactura.map(f => f.content).join('\n'));
-  
   const openai = createOpenAI({
     apiKey: OPENAI_API_KEY,
-    compatibility: 'strict',
+    compatibility: "strict",
   });
+
+  // Leer la imagen de la factura
+  const facturaBase64 = fs.readFileSync(
+    "files/factura-MDB-SOLUTIONS-2-DICIEMBRE-2023.pdf",
+    { encoding: 'base64' }
+  );
 
   const prompt = `
-  Analiza los siguientes detalles de una factura y verifica si cumple con las políticas de la empresa.
-  Debes responder en un formato estructurado.
+# Instrucciones de Análisis de Factura
 
-  Detalles de la factura:
-  ${detallesFactura}
+Eres un experto en auditoría de facturas. Analiza la factura proporcionada y responde en el siguiente formato:
 
-  Políticas relevantes:
-  ${politicasRelevantes.map(p => p.name).join('\n')}
-
-  Genera un análisis detallado considerando todas las políticas aplicables.
-  `;
+## Formato de Respuesta
+1. Cumplimiento: (Sí/No)
+2. Incumplimientos: [Lista detallada de los problemas encontrados]
+3. Resumen: (Un resumen breve del análisis)
+`;
 
   const { object, usage } = await generateObject({
-    model: openai('gpt-4o-mini'),
+    model: openai("gpt-4o-mini"),
     schema: z.object({
-      cumple: z.boolean().describe('Indica si la factura cumple con las políticas'),
-      incumplimientos: z.array(z.string()).describe('Lista de incumplimientos encontrados'),
-      resumen: z.string().describe('Resumen del análisis')
+      cumple: z.boolean(),
+      incumplimientos: z.array(z.string()),
+      resumen: z.string(),
     }),
     prompt: prompt,
+    images: [{
+      base64: facturaBase64,
+      type: "image/pdf"
+    }],
   });
-  console.log("usage", usage)
+
+  console.log("usage", usage);
   return object;
 }
 
 analizarFactura()
-  .then(resultado => console.log(JSON.stringify(resultado, null, 2)))
-  .catch(error => console.error('Error:', error));
+  .then((resultado) => console.log(JSON.stringify(resultado, null, 2)))
+  .catch((error) => console.error("Error:", error));
