@@ -4,6 +4,7 @@ import { createOpenAI } from '@ai-sdk/openai';
 import { generateObject } from 'ai';
 import { z } from 'zod';
 import { processPdf } from "./lib/retrieval/pdf";
+import { FileItemChunk } from "./types";
 
 // Definir interfaces
 interface AnalisisFactura {
@@ -14,7 +15,7 @@ interface AnalisisFactura {
 
 async function analizarFactura(): Promise<AnalisisFactura> {
   // Obtener políticas relevantes
-  const detallesFactura = await processPdf('files/billetes_va03okx_va03rrp.pdf')
+  const detallesFactura: FileItemChunk[] = await processPdf('files/billetes_va03okx_va03rrp.pdf')
 
   const politicasRelevantes = await findRelevantContent(detallesFactura.map(f => f.content).join('\n'));
   
