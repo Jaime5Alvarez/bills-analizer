@@ -1,19 +1,31 @@
 import { findRelevantContent } from "./lib/ai/embeddings";
 import { OPENAI_API_KEY } from "./config";
 import { createOpenAI } from '@ai-sdk/openai';
-
 import { generateObject } from 'ai';
 import { z } from 'zod';
-async function analizarFactura(detallesFactura: string) {
+import { processPdf } from "./lib/retrieval/pdf";
+
+// Definir interfaces
+interface AnalisisFactura {
+  cumple?: boolean;
+  incumplimientos?: string[];
+  resumen?: string;
+}
+
+async function analizarFactura(): Promise<AnalisisFactura> {
   // Obtener políticas relevantes
-  const politicasRelevantes = await findRelevantContent(detallesFactura);
-    const openai = createOpenAI({
+  const detallesFactura = await processPdf('files/billetes_va03okx_va03rrp.pdf')
+
+  const politicasRelevantes = await findRelevantContent(detallesFactura.map(f => f.content).join('\n'));
+  
+  const openai = createOpenAI({
     apiKey: OPENAI_API_KEY,
     compatibility: 'strict',
   });
-  // Crear el prompt para el análisis
+
   const prompt = `
-  Analiza los siguientes detalles de una factura y verifica si cumple con las políticas de la empresa:
+  Analiza los siguientes detalles de una factura y verifica si cumple con las políticas de la empresa.
+  Debes responder en un formato estructurado.
 
   Detalles de la factura:
   ${detallesFactura}
@@ -21,39 +33,22 @@ async function analizarFactura(detallesFactura: string) {
   Políticas relevantes:
   ${politicasRelevantes.map(p => p.name).join('\n')}
 
-  Por favor, indica:
-  1. Si la factura cumple con las políticas
-  2. Qué políticas específicas cumple o incumple
-  3. Recomendaciones para corregir cualquier incumplimiento
+  Genera un análisis detallado considerando todas las políticas aplicables.
   `;
 
-
-const { object } = await generateObject({
-  model: openai('gpt-4o-mini'),
-  schema: z.object({
-    analysis: z.object({
-      name: z.string(),
-      ingredients: z.array(z.string()),
-      steps: z.array(z.string()),
+  const { object, usage } = await generateObject({
+    model: openai('gpt-4o-mini'),
+    schema: z.object({
+      cumple: z.boolean().describe('Indica si la factura cumple con las políticas'),
+      incumplimientos: z.array(z.string()).describe('Lista de incumplimientos encontrados'),
+      resumen: z.string().describe('Resumen del análisis')
     }),
-  }),
-  prompt: prompt,
-});
-
-return object
+    prompt: prompt,
+  });
+  console.log("usage", usage)
+  return object;
 }
 
-// Ejemplo de uso
-const ejemploFactura = `
-Fecha: 2024-03-15
-Proveedor: Empresa XYZ
-Monto: $1,500
-Conceptos:
-- Servicios de consultoría
-- Gastos de viaje
-- Material de oficina
-`;
-
-analizarFactura(ejemploFactura)
-  .then(resultado => console.log(resultado))
+analizarFactura()
+  .then(resultado => console.log(JSON.stringify(resultado, null, 2)))
   .catch(error => console.error('Error:', error));
