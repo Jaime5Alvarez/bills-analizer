@@ -15,14 +15,14 @@ export const generateEmbeddings = async (
   const fileChunks = await processPdf(path);
 
   const chunks = fileChunks.map((chunk) => chunk.content);
-  const { embeddings, usage } = await embedMany({
+  const { embeddings: embeddingsResult, usage } = await embedMany({
     model: embeddingModel,
     values: chunks,
   });
-  const embeddingsMapped = embeddings.map((e, i) => ({ content: chunks[i], embedding: e }));
+  const embeddingsMapped = embeddingsResult.map((e, i) => ({ content: chunks[i], embedding: e }));
   await db.insert(embeddings).values(
     embeddingsMapped.map((embedding) => ({
-      content: embedding.content.replace(/\x00/g, ''), // Remove null characters
+      content: embedding.content.replace(/\x00/g, ''),
       embedding: embedding.embedding,
     }))
   );
